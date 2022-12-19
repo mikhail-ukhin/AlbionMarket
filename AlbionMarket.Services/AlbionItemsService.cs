@@ -10,7 +10,7 @@ namespace AlbionMarket.Services
 {
 	public class AlbionItemsService
 	{
-		private readonly Dict<string, AlbionItem> albionItemsDb = new Dict<string, AlbionItem>();
+		private readonly Dictionary<string, AlbionItem> albionItemsDb = new Dictionary<string, AlbionItem>();
 
 		public AlbionItemsService()
 		{
@@ -18,7 +18,7 @@ namespace AlbionMarket.Services
 		}
 
 		private void PrepareItemsData() {
-			var content = File.ReadAllText("C:\\Users\\user\\source\\repos\\AlbionMarket\\AlbionMarket.Services\\items.json");
+			var content = File.ReadAllText("C:\\Users\\mikha\\Documents\\repos\\AlbionMarket\\AlbionMarket.Api\\items.json");
 			var originalItems = JsonSerializer.Deserialize<List<AlbionItem>>(content);
 
 			foreach (var item in originalItems)
@@ -34,11 +34,11 @@ namespace AlbionMarket.Services
 			}
 		}
 
-		public List<AlbionItem> GetAllItems() => albionItems;
+		public List<AlbionItem> GetAllItems() => albionItemsDb.Values.ToList();
 
 		public List<AlbionItem> GetItems(string category, int? tier, int? enchant)
 		{
-			var expression = albionItemsDb.Values().Where(i => i.UniqueName.Contains(category));
+			var expression = albionItemsDb.Values.Where(i => i.UniqueName.Contains(category));
 
 			if (tier != null)
 			{

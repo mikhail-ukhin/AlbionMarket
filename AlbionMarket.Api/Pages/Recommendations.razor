@@ -1,0 +1,106 @@
+﻿@page "/recommendations"
+@implements IDisposable
+
+<PageTitle>Reccomendations</PageTitle>
+
+@using AlbionMarket.Core;
+@using AlbionMarket.Services
+@using System.Timers
+
+@inject MarketPairInfoService MarketPairInfoService;
+@inject WorkerStateService WorkerStateService;
+
+<h1>Albion Market Scanner</h1>
+
+<p>Scan in Progress - @ScanInProgress</p>
+
+
+@if (recomendations == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Tier</th>
+                <th>Enchant</th>
+                <th>Quality</th>
+                <th>Price (BlackMarket)</th>
+                <th>Price (Kaerlion)</th>
+                <th>Profit</th>
+                <th>Date (BlackMarket)</th>
+                <th>Date (Kaerlion)</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var recommendation in recomendations)
+            {
+                <tr>
+                    <td>@recommendation.ItemName</td>
+                    <td>@recommendation.Tier</td>
+                    <td>@recommendation.EnchantLevel</td>
+                    <td>@recommendation.ItemQuality</td>
+                    <td>@recommendation.PriceBlackMarket</td>
+                    <td>@recommendation.PriceCaerleon</td>
+                    <td>@recommendation.PotentialProfit</td>
+                    <td>@recommendation.SellDateBlackMarket</td>
+                    <td>@recommendation.SellDateCaerlion</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private MarketRecommendation[]? recomendations;
+    private int ItemsFound;
+    private DateTime? LastScanTimeStarted;
+    private DateTime? LastScanTimeFinished;
+    private Timer timer;
+
+    private bool ScanInProgress;
+
+    protected override async Task OnInitializedAsync()
+    {
+        recomendations = MarketPairInfoService.GetGoodPairs();
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            timer = new Timer();
+            timer.Interval = 5000;
+            timer.Elapsed += OnTimerInterval;
+            timer.AutoReset = true;
+            
+            timer.Enabled = true;
+        }
+        base.OnAfterRender(firstRender);
+    }
+
+    private void OnTimerInterval(object sender, ElapsedEventArgs e)
+    {
+        Console.WriteLine("Updating values...");
+
+        ItemsFound = WorkerStateService.ItemsFound;
+        LastScanTimeFinished = WorkerStateService.LastScanFinished;
+        LastScanTimeStarted = WorkerStateService.LastScanStart;
+
+        ScanInProgress = WorkerStateService.ScanInProgress;
+
+        recomendations = MarketPairInfoService.GetGoodPairs();
+
+        InvokeAsync(() => StateHasChanged());
+    }
+
+    public void Dispose()
+    {
+        // During prerender, this component is rendered without calling OnAfterRender and then immediately disposed
+        // this mean timer will be null so we have to check for null or use the Null-conditional operator ?
+        timer?.Dispose();
+    }
+}

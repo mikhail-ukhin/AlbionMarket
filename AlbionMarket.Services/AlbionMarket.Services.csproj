@@ -10,10 +10,4 @@
     <ProjectReference Include="..\AlbionMarket.Core\AlbionMarket.Core.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Update="items.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
 </Project>

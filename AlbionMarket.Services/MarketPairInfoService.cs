@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace AlbionMarket.Services
 {
-	public class MarketPairInfoService
+    public class MarketPairInfoService
 	{
 		// temp solution to store data in service
 		private List<MarketPair> marketPairsDb = new();
@@ -72,11 +72,16 @@ namespace AlbionMarket.Services
 
 		public MarketRecommendation[] GetGoodPairs()
 		{
+			if (marketPairsDb.Count == 0)
+			{
+				return Array.Empty<MarketRecommendation>();
+			}
+
 			return marketPairsDb
 				.Where(p => p.CaerleonOrder.SellPriceMin < p.BlackMarketOrder.SellPriceMin)
 				.Where(p => p.BlackMarketOrder.SellPriceMinDate >= DateTime.UtcNow.AddHours(-3))
 				.Where(p => p.BlackMarketOrder.SellPriceMinDate >= p.CaerleonOrder.SellPriceMinDate)
-				.Where(p => p.Profit > 4000)
+				.Where(p => p.Profit > 1000)
 				.Select(pair =>
 				{
 					var item = albionItemsService.GetItemInfo(pair.ItemId);
@@ -96,26 +101,5 @@ namespace AlbionMarket.Services
 				})
 				.ToArray();
 		}
-	}
-
-	public class MarketRecommendation
-	{
-		public string ItemName { get; set; }
-
-		public int? PotentialProfit { get; set; }
-
-		public int? PriceBlackMarket { get; set; }
-
-		public int? PriceCaerleon { get; set; }
-
-		public int Tier { get; set; }
-
-		public int ItemQuality { get; set; }
-
-		public int EnchantLevel { get; set; }
-
-		public DateTime? SellDateBlackMarket { get; set; }
-
-		public DateTime? SellDateCaerlion { get; set; }
 	}
 }
