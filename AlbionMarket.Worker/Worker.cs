@@ -6,94 +6,73 @@ namespace AlbionMarket.Worker
 	public class Worker : BackgroundService
 	{
 		private readonly ILogger<Worker> _logger;
-		private readonly CityOrderInfoService cityOrderInfoService;
-		private readonly AlbionItemsService albionItemsService;
-		private readonly MarketPairInfoService marketPairInfoService;
+		private readonly CityOrderInfoService _cityOrderInfoService;
+		private readonly AlbionItemsService _albionItemsService;
+		private readonly MarketPairInfoService _marketPairInfoService;
+
+		private readonly List<string> _armorTypes;
+		private readonly List<string> _itemsList;
+		private readonly List<string> _cities;
 
 		public Worker(ILogger<Worker> logger, CityOrderInfoService cityOrderInfoService, AlbionItemsService albionItemsService, MarketPairInfoService marketPairInfoService)
-		{
-			_logger = logger;
-			this.cityOrderInfoService = cityOrderInfoService;
-			this.albionItemsService = albionItemsService;
-			this.marketPairInfoService = marketPairInfoService;
+		{	
+			_cityOrderInfoService = cityOrderInfoService;
+			_albionItemsService = albionItemsService;
+			_marketPairInfoService = marketPairInfoService;
+
+			_armorTypes = new List<string>
+			{
+				"PLATE",
+				"LEATHER",
+				"CLOTH"
+			};
+
+			_itemsList = new List<string>
+			{
+				"HEAD",
+				"SHOES",
+				"ARMOR"
+			};
+
+            _cities = new List<string>()
+            {
+                "Caerleon",
+                "Blackmarket"
+            };
+
+            _logger = logger;
 		}
 
 		protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 		{
 			while (!stoppingToken.IsCancellationRequested)
 			{
-				var armorTypes = new List<string>
+				foreach (var armor in _armorTypes)
 				{
-					"PLATE",
-					"LEATHER",
-					"CLOTH"
-				};
-
-				var itemsList = new List<string>
-				{
-					"HEAD",
-					"SHOES",
-					"ARMOR"
-				};
-
-
-				foreach (var armor in armorTypes)
-				{
-					foreach (var item in itemsList)
+					foreach (var item in _itemsList)
 					{
 						await ProcessItems($"{item}_{armor}");
-						await Task.Delay(2500);
+						await Task.Delay(2500, stoppingToken);
 					}
 				}
 				
-
-				var itemsToWork = marketPairInfoService.GetGoodPairs();
+				var itemsToWork = _marketPairInfoService.GetGoodPairs();
 
 				await Task.Delay(60000, stoppingToken);
 			}
 		}
 
-		private async Task ProcessItems(string ITEM)
+		private async Task ProcessItems(string itemName)
 		{
-			var cities = new List<string>()
-				{
-					"Caerleon",
-					"Blackmarket"
-				};
+			var items = _albionItemsService.GetItems(itemName, tier: 6, enchant: null);
+			var itemNames = items.Select(v => v.UniqueName);
+			var orders = await _cityOrderInfoService.GetCityOrderInfos(1, itemNames, _cities);
 
-			var items = albionItemsService.GetItems(ITEM, tier: 6, enchant: null);
-			var itemNames = items.Select(v => v.UniqueName).ToArray();
-			var orders = await cityOrderInfoService.GetCityOrderInfos(1, itemNames, cities.ToArray());
-			var orderGroups = orders.ToList().GroupBy(v => $"{v.ItemId},{v.Quality}").ToList();
-			var merketPairs = new List<MarketPair>();
+			if (orders == null) return;
 
-			foreach (var item in orderGroups)
-			{
-				var groupsList = item.ToList();
+			var marketPairs = _marketPairInfoService.ConvertOrdersToMarketPairs(orders);
 
-				if (groupsList.Count == 2)
-				{
-					var caerlionOrder = groupsList.First(g => g.City == "Caerleon");
-					var blackmarketOrder = groupsList.First(g => g.City == "Black Market");
-
-					if (caerlionOrder.SellPriceMin == 0 || blackmarketOrder.SellPriceMin == 0)
-					{
-						continue;
-					}
-
-					var marketPair = new MarketPair
-					{
-						CaerleonOrder = caerlionOrder,
-						BlackMarketOrder = blackmarketOrder,
-						ItemId = caerlionOrder.ItemId,
-						Quality = caerlionOrder.Quality
-					};
-
-					merketPairs.Add(marketPair);
-				}
-			}
-
-			await marketPairInfoService.HandleNewData(merketPairs);
+			await _marketPairInfoService.HandleNewData(marketPairs);
 		}
 	}
 }

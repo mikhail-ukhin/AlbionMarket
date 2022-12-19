@@ -10,25 +10,27 @@ namespace AlbionMarket.Services
 {
 	public class AlbionItemsService
 	{
-
-		private readonly List<AlbionItem> albionItems = new List<AlbionItem>();
+		private readonly Dict<string, AlbionItem> albionItemsDb = new Dict<string, AlbionItem>();
 
 		public AlbionItemsService()
 		{
-			var content = File.ReadAllText("C:\\Users\\user\\source\\repos\\AlbionMarket\\AlbionMarket.Services\\items.json");
+			PrepareItemsData();
+		}
 
+		private void PrepareItemsData() {
+			var content = File.ReadAllText("C:\\Users\\user\\source\\repos\\AlbionMarket\\AlbionMarket.Services\\items.json");
 			var originalItems = JsonSerializer.Deserialize<List<AlbionItem>>(content);
 
 			foreach (var item in originalItems)
 			{
-				if (item.UniqueName.Contains("ARTEFACT"))
-				{
-					continue;
-				}
+				// if (item.UniqueName.Contains("ARTEFACT"))
+				// {
+				// 	continue;
+				// }
 
 				item.ParseName();
 
-				albionItems.Add(item);
+				albionItemsDb[item.UniqueName] = item;
 			}
 		}
 
@@ -36,7 +38,7 @@ namespace AlbionMarket.Services
 
 		public List<AlbionItem> GetItems(string category, int? tier, int? enchant)
 		{
-			var expression = albionItems.Where(i => i.UniqueName.Contains(category));
+			var expression = albionItemsDb.Values().Where(i => i.UniqueName.Contains(category));
 
 			if (tier != null)
 			{
@@ -51,8 +53,8 @@ namespace AlbionMarket.Services
 			return expression.ToList();
 		}
 
-		public string GetItemFriendlyName(string itemId) => albionItems.FirstOrDefault(i => i.UniqueName == itemId)!.LocalizedNames.EN_US;
+		public string GetItemFriendlyName(string itemId) => GetItemInfo(itemId).LocalizedNames.EN_US;
 
-		public AlbionItem GetItemInfo(string itemId) => albionItems.FirstOrDefault(i => i.UniqueName == itemId);
+		public AlbionItem GetItemInfo(string itemId) => albionItemsDb[itemId];
 	}
 }

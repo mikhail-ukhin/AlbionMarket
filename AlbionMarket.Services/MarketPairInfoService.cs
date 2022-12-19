@@ -36,6 +36,40 @@ namespace AlbionMarket.Services
 			}
 		}
 
+		public List<MarketPair> ConvertOrdersToMarketPairs(IEnumerable<CityOrder> orders)
+		{
+            var marketPairs = new List<MarketPair>();
+            var orderGroups = orders.GroupBy(v => $"{v.ItemId},{v.Quality}");
+
+            foreach (var item in orderGroups)
+            {
+                var groupsList = item.ToList();
+
+                if (groupsList.Count == 2)
+                {
+                    var caerlionOrder = groupsList.First(g => g.City == "Caerleon");
+                    var blackmarketOrder = groupsList.First(g => g.City == "Black Market");
+
+                    if (caerlionOrder.SellPriceMin == 0 || blackmarketOrder.SellPriceMin == 0)
+                    {
+                        continue;
+                    }
+
+                    var marketPair = new MarketPair
+                    {
+                        CaerleonOrder = caerlionOrder,
+                        BlackMarketOrder = blackmarketOrder,
+                        ItemId = caerlionOrder.ItemId,
+                        Quality = caerlionOrder.Quality
+                    };
+
+                    marketPairs.Add(marketPair);
+                }
+            }
+
+			return marketPairs;
+        }
+
 		public MarketRecommendation[] GetGoodPairs()
 		{
 			return marketPairsDb
