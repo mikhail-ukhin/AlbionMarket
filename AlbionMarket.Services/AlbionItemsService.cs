@@ -1,60 +1,89 @@
 ﻿using AlbionMarket.Core;
+using Microsoft.Extensions.Options;
+using Microsoft.VisualBasic.FileIO;
+using System.Reflection;
 using System.Text.Json;
 
 namespace AlbionMarket.Services
 {
-	public class AlbionItemsService
-	{
-		private readonly Dictionary<string, AlbionItem> albionItemsDb = new Dictionary<string, AlbionItem>();
+    public class AlbionItemsService
+    {
+        private readonly Dictionary<string, AlbionItem> albionItemsDb = new Dictionary<string, AlbionItem>();
+        private readonly AlbionMarketScanerOptions _albionMarketScanerOptions;
 
-		public AlbionItemsService()
-		{
-			PrepareItemsData();
-		}
+        public AlbionItemsService(IOptions<AlbionMarketScanerOptions> albionMarketScannerOptions)
+        {
+            _albionMarketScanerOptions = albionMarketScannerOptions.Value;
 
-		private void PrepareItemsData() {
-			var content = File.ReadAllText("C:\\Users\\user\\source\\repos\\AlbionMarket\\AlbionMarket.Api\\items.json");
-			var originalItems = JsonSerializer.Deserialize<List<AlbionItem>>(content);
+            PrepareItemsData();
+        }
 
-			foreach (var item in originalItems)
-			{
-				// if (item.UniqueName.Contains("ARTEFACT"))
-				// {
-				// 	continue;
-				// }
+        private void PrepareItemsData()
+        {
+            string path = Path.Combine(
+                Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
+                @"items.json"
+            );
 
-				item.ParseName();
+            var content = File.ReadAllText(path);
+            var originalItems = JsonSerializer.Deserialize<List<AlbionItem>>(content);
 
-				albionItemsDb[item.UniqueName] = item;
-			}
-		}
+            if (originalItems != null)
+            {
+                foreach (var item in originalItems)
+                {
+                    item.ParseName();
 
-		public List<AlbionItem> GetAllItems() => albionItemsDb.Values.ToList();
+                    albionItemsDb[item.UniqueName] = item;
+                }
 
-		public List<AlbionItem> GetItems(string category, int? tier, int? enchant)
-		{
-			var expression = albionItemsDb.Values.Where(i => i.UniqueName.Contains(category));
+            }
+        }
 
-			if (tier != null)
-			{
-				expression = expression.Where(i => i.Tier >= tier);
-			}
+        public List<AlbionItem> GetAllItems() => albionItemsDb.Values.ToList();
 
-			if (enchant != null)
-			{
-				expression = expression.Where(i => i.EnchantLevel == enchant);
-			}
+        public List<AlbionItem> GetItems(string category, int? tier, int? enchant)
+        {
+            var expression = albionItemsDb.Values.Where(i => i.UniqueName.Contains(category));
 
-			return expression.ToList();
-		}
+            if (tier != null)
+            {
+                expression = expression.Where(i => i.Tier >= tier);
+            }
 
-		public string GetItemFriendlyName(string itemId) => GetItemInfo(itemId).LocalizedNames.EN_US;
+            if (enchant != null)
+            {
+                expression = expression.Where(i => i.EnchantLevel == enchant);
+            }
 
-		public AlbionItem GetItemInfo(string itemId) => albionItemsDb[itemId];
+            return expression.ToList();
+        }
 
-		public List<AlbionItem> GetAllSwords() {
-			var swordTypeNames = new List<string>
-			{
+        public string GetItemFriendlyName(string itemId) => GetItemInfo(itemId).LocalizedNames.EN_US;
+
+        public AlbionItem GetItemInfo(string itemId) => albionItemsDb[itemId];
+
+        public List<AlbionItem> GetWeaponGeneral(IEnumerable<string> itemTypeNames)
+        {
+            var allItems = new List<AlbionItem>();
+
+            foreach (var item in itemTypeNames)
+            {
+                var albionItems = GetItems(item, _albionMarketScanerOptions.DefaultMinItemTier, null);
+
+                if (albionItems != null)
+                {
+                    allItems.AddRange(albionItems);
+                }
+            }
+
+            return allItems;
+        }
+
+        public List<AlbionItem> GetAllSwords()
+        {
+            var swordTypeNames = new List<string>
+            {
                 "MAIN_SWORD",
                 "2H_CLAYMORE",
                 "2H_DUALSWORD",
@@ -62,22 +91,22 @@ namespace AlbionMarket.Services
                 "2H_CLEAVER_HELL",
                 "2H_DUALSCIMITAR_UNDEAD",
                 "2H_CLAYMORE_AVALON"
-            };	
+            };
 
-			var swordItems = new List<AlbionItem>();
+            var swordItems = new List<AlbionItem>();
 
-			foreach (var item in swordTypeNames)
-			{
-				var swords = GetItems(item, 6, null);
-				
-				if (swords != null)
-				{
-					swordItems.AddRange(swords);
-				}
-			}
+            foreach (var item in swordTypeNames)
+            {
+                var swords = GetItems(item, _albionMarketScanerOptions.DefaultMinItemTier, null);
 
-			return swordItems;
-		}
+                if (swords != null)
+                {
+                    swordItems.AddRange(swords);
+                }
+            }
+
+            return swordItems;
+        }
 
         public List<AlbionItem> GetAllArmor()
         {
@@ -108,23 +137,6 @@ namespace AlbionMarket.Services
             }
 
             return armorItems;
-        }
-
-        public List<AlbionItem> GetWeaponGeneral(IEnumerable<string> itemTypeNames)
-        {
-            var allItems = new List<AlbionItem>();
-
-            foreach (var item in itemTypeNames)
-            {
-                var albionItems = GetItems(item, 6, null);
-
-                if (albionItems != null)
-                {
-                    allItems.AddRange(albionItems);
-                }
-            }
-
-            return allItems;
         }
 
         public List<AlbionItem> GetAllAxes()

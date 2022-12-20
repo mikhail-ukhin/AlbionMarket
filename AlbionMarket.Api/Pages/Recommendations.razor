@@ -81,7 +81,7 @@ else
         recomendations.Remove(recommendation);
     }
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
         recomendations = MarketPairInfoService.GetGoodPairs().ToList();
         CurrentTime = DateTime.UtcNow;

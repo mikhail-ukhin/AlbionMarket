@@ -1,5 +1,6 @@
 using AlbionMarket.Core;
 using AlbionMarket.Services;
+using Microsoft.Extensions.Options;
 
 namespace AlbionMarket.Api
 {
@@ -10,9 +11,12 @@ namespace AlbionMarket.Api
         private readonly AlbionItemsService _albionItemsService;
         private readonly MarketPairInfoService _marketPairInfoService;
         private readonly WorkerStateService _workerStateService;
+
         private readonly List<string> _armorTypes;
         private readonly List<string> _itemsList;
         private readonly List<string> _cities;
+
+        private readonly AlbionMarketScanerOptions _albionMarketScanerOptions;
 
         private int ItemsFound = 0;
 
@@ -21,8 +25,11 @@ namespace AlbionMarket.Api
             CityOrderInfoService cityOrderInfoService,
             AlbionItemsService albionItemsService,
             MarketPairInfoService marketPairInfoService,
-            WorkerStateService workerStateService)
+            WorkerStateService workerStateService,
+            IOptions<AlbionMarketScanerOptions> albionMarketScanerOptions)
         {
+            _albionMarketScanerOptions = albionMarketScanerOptions.Value;
+
             _cityOrderInfoService = cityOrderInfoService;
             _albionItemsService = albionItemsService;
             _marketPairInfoService = marketPairInfoService;
@@ -65,13 +72,13 @@ namespace AlbionMarket.Api
                 await WarriorItemMarketPair(items);
                 await HunterItemMarketPair(items);
 
-                await _marketPairInfoService.HandleNewData(items);
+                _marketPairInfoService.HandleNewData(items);
 
                 _workerStateService.LastScanFinished = DateTime.UtcNow;
                 _workerStateService.ScanInProgress = false;
                 _workerStateService.ItemsFound = ItemsFound;
 
-                await Task.Delay(120000, stoppingToken);
+                await Task.Delay(_albionMarketScanerOptions.MarketScanDelayMs, stoppingToken);
             }
         }
 
@@ -86,7 +93,7 @@ namespace AlbionMarket.Api
 
             ItemsFound += marketPairs.Count;
 
-            await Task.Delay(5000);
+            await Task.Delay(_albionMarketScanerOptions.ItemCategoriesDelayMs);
 
             return marketPairs;
         }

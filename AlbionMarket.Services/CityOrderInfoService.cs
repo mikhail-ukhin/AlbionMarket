@@ -1,4 +1,5 @@
 ﻿using AlbionMarket.Core;
+using Microsoft.Extensions.Options;
 using System.Net.Http.Json;
 
 namespace AlbionMarket.Services
@@ -6,11 +7,13 @@ namespace AlbionMarket.Services
 	public class CityOrderInfoService
 	{
 		private readonly HttpClient _httpClient = new();
+        private readonly AlbionMarketScanerOptions _albionMarketScanerOptions;
 
-		public CityOrderInfoService()
+        public CityOrderInfoService(IOptions<AlbionMarketScanerOptions> albionMarketScanerOptions)
 		{
-			_httpClient.BaseAddress = new Uri("https://www.albion-online-data.com/api/v2/");
-		}
+            _albionMarketScanerOptions = albionMarketScanerOptions.Value;
+            _httpClient.BaseAddress = new Uri(_albionMarketScanerOptions.ApiUrl);
+        }
 
 		public async Task<CityOrder[]?> GetCityOrderInfos(int quality, IEnumerable<string> itemNames, IEnumerable<string> cities)
 		{

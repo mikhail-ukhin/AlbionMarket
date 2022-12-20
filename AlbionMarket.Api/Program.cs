@@ -1,4 +1,5 @@
 using AlbionMarket.Api;
+using AlbionMarket.Core;
 using AlbionMarket.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -11,6 +12,9 @@ builder.Services.AddSingleton<AlbionItemsService>();
 builder.Services.AddSingleton<MarketPairInfoService>();
 builder.Services.AddSingleton<WorkerStateService>();
 builder.Services.AddSingleton<CheckedItemsService>();
+
+builder.Services.Configure<AlbionMarketScanerOptions>(
+	builder.Configuration.GetSection("AlbionMarketScanner"));
 
 builder.Services.AddHostedService<Worker>();
 

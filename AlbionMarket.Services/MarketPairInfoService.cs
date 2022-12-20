@@ -1,4 +1,5 @@
 ﻿using AlbionMarket.Core;
+using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,22 +12,32 @@ namespace AlbionMarket.Services
 	{
 		// temp solution to store data in service
 		private List<MarketPair> marketPairsDb = new();
-		private readonly AlbionItemsService albionItemsService;
+		private readonly AlbionItemsService _albionItemsService;
         private readonly CheckedItemsService _checkedItemsService;
 
-        public MarketPairInfoService(AlbionItemsService albionItemsService, CheckedItemsService checkedItemsService)
+		private readonly AlbionMarketScanerOptions _albionMarketScanerOptions;
+
+        public MarketPairInfoService(
+			AlbionItemsService albionItemsService, 
+			CheckedItemsService checkedItemsService,
+			IOptions<AlbionMarketScanerOptions> albionMarketScanerOptions)
 		{
-			this.albionItemsService = albionItemsService;
+			_albionItemsService = albionItemsService;
             _checkedItemsService = checkedItemsService;
+
+			_albionMarketScanerOptions = albionMarketScanerOptions.Value;
         }
 
-		public async Task HandleNewData(IEnumerable<MarketPair> marketPairs)
+		public void HandleNewData(IEnumerable<MarketPair> marketPairs)
 		{
+			// TDB Come up with cleverer algorithm to update items
+
 			var newDb = new List<MarketPair>();
 
 			foreach (var item in marketPairs)
 			{
                 item.Profit = item.BlackMarketOrder.SellPriceMin - item.CaerleonOrder.SellPriceMin;
+
 				newDb.Add(item);
             }
 
@@ -99,10 +110,10 @@ namespace AlbionMarket.Services
 
 					return false;
 				})
-				.Where(p => p.Profit > 15000)
+				.Where(p => p.Profit > _albionMarketScanerOptions.MinProfit)
 				.Select(pair =>
 				{
-					var item = albionItemsService.GetItemInfo(pair.ItemId);
+					var item = _albionItemsService.GetItemInfo(pair.ItemId);
 
 					return new MarketRecommendation
 					{

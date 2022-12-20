@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using AlbionMarket.Core;
 
 namespace AlbionMarket.Services
 {
@@ -34,14 +30,5 @@ namespace AlbionMarket.Services
                 });
             }
         }
-    }
-
-    public class CheckedItem
-    {
-        public string ItemId { get; set; }
-
-        public DateTime? CheckedAt { get; set; }
-
-        public bool IsChecked { get; set; }
     }
 }
