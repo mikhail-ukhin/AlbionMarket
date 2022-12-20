@@ -12,28 +12,25 @@ namespace AlbionMarket.Services
 		// temp solution to store data in service
 		private List<MarketPair> marketPairsDb = new();
 		private readonly AlbionItemsService albionItemsService;
+        private readonly CheckedItemsService _checkedItemsService;
 
-		public MarketPairInfoService(AlbionItemsService albionItemsService)
+        public MarketPairInfoService(AlbionItemsService albionItemsService, CheckedItemsService checkedItemsService)
 		{
 			this.albionItemsService = albionItemsService;
-		}
+            _checkedItemsService = checkedItemsService;
+        }
 
 		public async Task HandleNewData(IEnumerable<MarketPair> marketPairs)
 		{
+			var newDb = new List<MarketPair>();
+
 			foreach (var item in marketPairs)
 			{
-				var existedPair = marketPairsDb.SingleOrDefault(p => p.Quality == item.Quality && p.ItemId == item.ItemId);
+                item.Profit = item.BlackMarketOrder.SellPriceMin - item.CaerleonOrder.SellPriceMin;
+				newDb.Add(item);
+            }
 
-				if (existedPair != null)
-				{
-
-				}
-				else
-				{
-					item.Profit = item.BlackMarketOrder.SellPriceMin - item.CaerleonOrder.SellPriceMin;
-					marketPairsDb.Add(item);
-				}
-			}
+			marketPairsDb = newDb;
 		}
 
 		public List<MarketPair> ConvertOrdersToMarketPairs(IEnumerable<CityOrder> orders)
@@ -77,11 +74,32 @@ namespace AlbionMarket.Services
 				return Array.Empty<MarketRecommendation>();
 			}
 
+			var itemsToFilter = _checkedItemsService.GetItems();
+
 			return marketPairsDb
 				.Where(p => p.CaerleonOrder.SellPriceMin < p.BlackMarketOrder.SellPriceMin)
-				.Where(p => p.BlackMarketOrder.SellPriceMinDate >= DateTime.UtcNow.AddHours(-3))
-				.Where(p => p.BlackMarketOrder.SellPriceMinDate >= p.CaerleonOrder.SellPriceMinDate)
-				.Where(p => p.Profit > 1000)
+				//.Where(p => p.BlackMarketOrder.SellPriceMinDate >= DateTime.UtcNow.AddHours(-6))
+				//.Where(p => p.BlackMarketOrder.SellPriceMinDate >= p.CaerleonOrder.SellPriceMinDate)
+				.Where(p =>
+				{
+					var checkedItem = itemsToFilter.FirstOrDefault(v => v.ItemId == p.ItemId);
+
+					if (checkedItem == null) return true;
+
+					if (checkedItem.IsChecked == false) return true;
+
+					var itemChanged = (checkedItem.CheckedAt < p.BlackMarketOrder.SellPriceMinDate || checkedItem.CheckedAt < p.CaerleonOrder.SellPriceMinDate);
+
+					if (itemChanged)
+					{
+						checkedItem.IsChecked = false;
+
+						return true;	
+					}
+
+					return false;
+				})
+				.Where(p => p.Profit > 15000)
 				.Select(pair =>
 				{
 					var item = albionItemsService.GetItemInfo(pair.ItemId);
@@ -91,15 +109,29 @@ namespace AlbionMarket.Services
 						ItemName = item.LocalizedNames.EN_US,
 						PotentialProfit = pair.Profit,
 						EnchantLevel = item.EnchantLevel,
-						ItemQuality = pair.Quality,
+						ItemQuality = MapItemQuality(pair.Quality),
 						Tier = item.Tier,
 						SellDateBlackMarket = pair.BlackMarketOrder.SellPriceMinDate,
 						SellDateCaerlion = pair.CaerleonOrder.SellPriceMinDate,
 						PriceBlackMarket = pair.BlackMarketOrder.SellPriceMin,
-						PriceCaerleon = pair.CaerleonOrder.SellPriceMin
+						PriceCaerleon = pair.CaerleonOrder.SellPriceMin,
+						ItemId = pair.ItemId
 					};
 				})
+				.OrderByDescending(p => p.PotentialProfit)
 				.ToArray();
 		}
+
+		private string MapItemQuality(int quality) {
+			return quality switch
+			{
+				1 => "Normal",
+				2 => "Good",
+				3 => "Outstanding",
+				4 => "Excellent",
+				5 => "Masterpiece",
+				_ => throw new ArgumentOutOfRangeException(nameof(quality))
+			};
+		}	
 	}
 }

@@ -9,10 +9,16 @@
 
 @inject MarketPairInfoService MarketPairInfoService;
 @inject WorkerStateService WorkerStateService;
+@inject CheckedItemsService CheckedItemsService;
 
 <h1>Albion Market Scanner</h1>
 
+<p>@CurrentTime</p>
+
 <p>Scan in Progress - @ScanInProgress</p>
+<p>Items Found - @ItemsFound</p>
+<p>Last Scan Start Time - @LastScanTimeStarted</p>
+<p>Last Scan Finished Time - @LastScanTimeFinished</p>
 
 
 @if (recomendations == null)
@@ -33,6 +39,7 @@ else
                 <th>Profit</th>
                 <th>Date (BlackMarket)</th>
                 <th>Date (Kaerlion)</th>
+                <td>Check</td>
             </tr>
         </thead>
         <tbody>
@@ -48,6 +55,7 @@ else
                     <td>@recommendation.PotentialProfit</td>
                     <td>@recommendation.SellDateBlackMarket</td>
                     <td>@recommendation.SellDateCaerlion</td>
+                    <td><button @onclick="() => CheckItem(recommendation)">Check</button></td>
                 </tr>
             }
         </tbody>
@@ -55,17 +63,26 @@ else
 }
 
 @code {
-    private MarketRecommendation[]? recomendations;
+    private List<MarketRecommendation>? recomendations;
     private int ItemsFound;
     private DateTime? LastScanTimeStarted;
     private DateTime? LastScanTimeFinished;
     private Timer timer;
+    private DateTime CurrentTime;
 
     private bool ScanInProgress;
 
+    private void CheckItem(MarketRecommendation recommendation)
+    {
+        CheckedItemsService.CheckItem(recommendation.ItemId);
+
+        recomendations.Remove(recommendation);
+    }
+
     protected override async Task OnInitializedAsync()
     {
-        recomendations = MarketPairInfoService.GetGoodPairs();
+        recomendations = MarketPairInfoService.GetGoodPairs().ToList();
+        CurrentTime = DateTime.UtcNow;
     }
 
     protected override void OnAfterRender(bool firstRender)
@@ -91,8 +108,9 @@ else
         LastScanTimeStarted = WorkerStateService.LastScanStart;
 
         ScanInProgress = WorkerStateService.ScanInProgress;
+        CurrentTime = DateTime.UtcNow;
 
-        recomendations = MarketPairInfoService.GetGoodPairs();
+        recomendations = MarketPairInfoService.GetGoodPairs().ToList();
 
         InvokeAsync(() => StateHasChanged());
     }

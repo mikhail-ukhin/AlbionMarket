@@ -10,6 +10,7 @@ builder.Services.AddSingleton<CityOrderInfoService>();
 builder.Services.AddSingleton<AlbionItemsService>();
 builder.Services.AddSingleton<MarketPairInfoService>();
 builder.Services.AddSingleton<WorkerStateService>();
+builder.Services.AddSingleton<CheckedItemsService>();
 
 builder.Services.AddHostedService<Worker>();
 

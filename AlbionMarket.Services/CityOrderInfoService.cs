@@ -14,7 +14,7 @@ namespace AlbionMarket.Services
 
 		public async Task<CityOrder[]?> GetCityOrderInfos(int quality, IEnumerable<string> itemNames, IEnumerable<string> cities)
 		{
-			var requestUrl = $"stats/prices/{string.Join(',', itemNames)}?locations={string.Join(',', cities)}&qualities={quality}";
+			var requestUrl = $"stats/prices/{string.Join(',', itemNames)}?locations={string.Join(',', cities)}";
 			var result = await _httpClient.GetFromJsonAsync<CityOrder[]>(requestUrl);
 
 			return result;
