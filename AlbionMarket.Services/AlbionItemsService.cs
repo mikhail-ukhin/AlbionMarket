@@ -1,4 +1,5 @@
 ﻿using AlbionMarket.Core;
+using AlbionMarket.Core.Models;
 using Microsoft.Extensions.Options;
 using Microsoft.VisualBasic.FileIO;
 using System.Reflection;

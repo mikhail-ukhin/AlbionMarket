@@ -5,11 +5,11 @@ using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
-namespace AlbionMarket.Core
+namespace AlbionMarket.Core.Models
 {
-	public class LocalazedNames
-	{
-		[JsonPropertyName("EN-US")]
-		public string EN_US { get; set; }
-	}
+    public class LocalazedNames
+    {
+        [JsonPropertyName("EN-US")]
+        public string EN_US { get; set; }
+    }
 }

@@ -1,10 +1,11 @@
 ﻿using AlbionMarket.Core;
+using AlbionMarket.Core.Models;
 using Microsoft.Extensions.Options;
 using System.Net.Http.Json;
 
 namespace AlbionMarket.Services
 {
-	public class CityOrderInfoService
+    public class CityOrderInfoService
 	{
 		private readonly HttpClient _httpClient = new();
         private readonly AlbionMarketScanerOptions _albionMarketScanerOptions;

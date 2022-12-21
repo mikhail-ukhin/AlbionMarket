@@ -1,4 +1,5 @@
 using AlbionMarket.Core;
+using AlbionMarket.Core.Models;
 using AlbionMarket.Services;
 using Microsoft.Extensions.Options;
 

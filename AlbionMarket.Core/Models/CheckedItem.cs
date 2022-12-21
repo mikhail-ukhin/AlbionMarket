@@ -1,4 +1,4 @@
-﻿namespace AlbionMarket.Core
+﻿namespace AlbionMarket.Core.Models
 {
     public class CheckedItem
     {

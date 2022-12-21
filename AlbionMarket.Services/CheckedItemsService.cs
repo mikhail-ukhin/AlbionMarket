@@ -1,4 +1,4 @@
-﻿using AlbionMarket.Core;
+﻿using AlbionMarket.Core.Models;
 
 namespace AlbionMarket.Services
 {
