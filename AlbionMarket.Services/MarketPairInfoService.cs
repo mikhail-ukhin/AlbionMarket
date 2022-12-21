@@ -10,21 +10,18 @@ namespace AlbionMarket.Services
         private List<MarketPair> marketPairsDb = new();
 
         private readonly AlbionItemsService _albionItemsService;
-        private readonly CheckedItemsService _checkedItemsService;
         private readonly MarketPairStateService _marketPairStateService;
 
         private readonly AlbionMarketScanerOptions _albionMarketScanerOptions;
 
         public MarketPairInfoService(
             AlbionItemsService albionItemsService,
-            CheckedItemsService checkedItemsService,
             MarketPairStateService marketPairStateService,
 
             IOptions<AlbionMarketScanerOptions> albionMarketScanerOptions
         )
         {
             _albionItemsService = albionItemsService;
-            _checkedItemsService = checkedItemsService;
             _marketPairStateService = marketPairStateService;
 
             _albionMarketScanerOptions = albionMarketScanerOptions.Value;
@@ -80,7 +77,7 @@ namespace AlbionMarket.Services
             return marketPairs;
         }
 
-        public async Task<List<MarketRecommendation>> GetGoodPairs()
+        public async Task<List<MarketRecommendation>> GetProfitableMarketPairs()
         {
             if (marketPairsDb.Count == 0)
             {
@@ -88,62 +85,52 @@ namespace AlbionMarket.Services
             }
 
             var marketPairStateItems = await _marketPairStateService.GetAllAsync();
+
+            var filteredMarketPairs = marketPairsDb
+                .Where(p => p.Profit > _albionMarketScanerOptions.MinProfit)
+                .Where(p => p.CaerleonOrder.SellPriceMin > p.BlackMarketOrder.SellPriceMin);
+
             var result = new List<MarketRecommendation>();
 
-            foreach (var marketPair in marketPairsDb)
+            foreach (var marketPair in filteredMarketPairs)
             {
                 var existedMarketPairState = marketPairStateItems.FirstOrDefault(p => p.ItemId == marketPair.ItemId && p.Quality == marketPair.Quality);
+                var recommendation = MapMarketPairToRecommendation(marketPair);
 
                 if (existedMarketPairState != null)
                 {
-                    // checked
-
                     // checked item, but updated profit and dates
                     if (marketPair.Profit > existedMarketPairState.LastProfit && (existedMarketPairState.StatusUpdatedAt < marketPair.BlackMarketOrder.SellPriceMinDate || existedMarketPairState.StatusUpdatedAt < marketPair.CaerleonOrder.SellPriceMinDate))
                     {
-                        var recommendation = MapMarketPairToRecommendation(marketPair);
-
                         existedMarketPairState.StatusUpdatedAt = DateTime.UtcNow;
+                        existedMarketPairState.LastProfit = marketPair.Profit;
+                        existedMarketPairState.Status = Core.Enums.MarketPairStatus.None;
 
+                        await _marketPairStateService.UpdateAsync(existedMarketPairState.Id, existedMarketPairState);
 
                         result.Add(recommendation);
                     }
                 }
                 else
                 {
+                    var newMarketPairState = new MarketPairState
+                    {
+                        ItemId = marketPair.ItemId,
+                        LastProfit = marketPair.Profit,
+                        Quality = marketPair.Quality,
+                        Status = Core.Enums.MarketPairStatus.None,
+                        StatusUpdatedAt = DateTime.UtcNow
+                    };
 
+                    await _marketPairStateService.CreateAsync(newMarketPairState);
+
+                    result.Add(recommendation);
                 }
             }
 
+            result = result.OrderByDescending(r => r.PotentialProfit).ToList();
+
             return result;
-
-            //return marketPairsDb
-            //    .Where(p => p.CaerleonOrder.SellPriceMin < p.BlackMarketOrder.SellPriceMin)
-            //    //.Where(p => p.BlackMarketOrder.SellPriceMinDate >= DateTime.UtcNow.AddHours(-6))
-            //    //.Where(p => p.BlackMarketOrder.SellPriceMinDate >= p.CaerleonOrder.SellPriceMinDate)
-            //    .Where(p =>
-            //    {
-            //        var checkedItem = itemsToFilter.FirstOrDefault(v => v.ItemId == p.ItemId);
-
-            //        if (checkedItem == null) return true;
-
-            //        if (checkedItem.IsChecked == false) return true;
-
-            //        var itemChanged = (checkedItem.CheckedAt < p.BlackMarketOrder.SellPriceMinDate || checkedItem.CheckedAt < p.CaerleonOrder.SellPriceMinDate);
-
-            //        if (itemChanged)
-            //        {
-            //            checkedItem.IsChecked = false;
-
-            //            return true;
-            //        }
-
-            //        return false;
-            //    })
-            //    .Where(p => p.Profit > _albionMarketScanerOptions.MinProfit)
-            //    .Select(MapMarketPairToRecommendation)
-            //    .OrderByDescending(p => p.PotentialProfit)
-            //    .ToArray();
         }
 
         private MarketRecommendation MapMarketPairToRecommendation(MarketPair marketPair)

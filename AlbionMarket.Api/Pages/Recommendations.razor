@@ -10,7 +10,7 @@
 
 @inject MarketPairInfoService MarketPairInfoService;
 @inject WorkerStateService WorkerStateService;
-@inject CheckedItemsService CheckedItemsService;
+@inject MarketPairStateService MarketPairStateService;
 
 <h1>Albion Market Scanner</h1>
 
@@ -77,13 +77,13 @@ else
 
     private void CheckItem(MarketRecommendation recommendation)
     {
-        CheckedItemsService.CheckItem(recommendation.ItemId);
-        recomendations.Remove(recommendation);
+        //CheckedItemsService.CheckItem(recommendation.ItemId);
+        //recomendations.Remove(recommendation);
     }
 
     protected override async Task OnInitializedAsync()
     {
-        recomendations = await MarketPairInfoService.GetGoodPairs();
+        recomendations = await MarketPairInfoService.GetProfitableMarketPairs();
         CurrentTime = DateTime.UtcNow;
 
         await base.OnInitializedAsync();
@@ -97,13 +97,13 @@ else
             timer.Interval = 5000;
             timer.Elapsed += OnTimerInterval;
             timer.AutoReset = true;
-            
+
             timer.Enabled = true;
         }
         base.OnAfterRender(firstRender);
     }
 
-    private void OnTimerInterval(object sender, ElapsedEventArgs e)
+    private async void OnTimerInterval(object sender, ElapsedEventArgs e)
     {
         Console.WriteLine("Updating values...");
 
@@ -114,9 +114,9 @@ else
         ScanInProgress = WorkerStateService.ScanInProgress;
         CurrentTime = DateTime.UtcNow;
 
-        recomendations = MarketPairInfoService.GetGoodPairs();
+        recomendations = await MarketPairInfoService.GetProfitableMarketPairs();
 
-        InvokeAsync(() => StateHasChanged());
+        await InvokeAsync(() => StateHasChanged());
     }
 
     public void Dispose()
