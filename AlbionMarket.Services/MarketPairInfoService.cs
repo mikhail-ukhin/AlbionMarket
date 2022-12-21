@@ -117,50 +117,33 @@ namespace AlbionMarket.Services
 
             return result;
 
-            return marketPairsDb
-                .Where(p => p.CaerleonOrder.SellPriceMin < p.BlackMarketOrder.SellPriceMin)
-                //.Where(p => p.BlackMarketOrder.SellPriceMinDate >= DateTime.UtcNow.AddHours(-6))
-                //.Where(p => p.BlackMarketOrder.SellPriceMinDate >= p.CaerleonOrder.SellPriceMinDate)
-                .Where(p =>
-                {
-                    var checkedItem = itemsToFilter.FirstOrDefault(v => v.ItemId == p.ItemId);
+            //return marketPairsDb
+            //    .Where(p => p.CaerleonOrder.SellPriceMin < p.BlackMarketOrder.SellPriceMin)
+            //    //.Where(p => p.BlackMarketOrder.SellPriceMinDate >= DateTime.UtcNow.AddHours(-6))
+            //    //.Where(p => p.BlackMarketOrder.SellPriceMinDate >= p.CaerleonOrder.SellPriceMinDate)
+            //    .Where(p =>
+            //    {
+            //        var checkedItem = itemsToFilter.FirstOrDefault(v => v.ItemId == p.ItemId);
 
-                    if (checkedItem == null) return true;
+            //        if (checkedItem == null) return true;
 
-                    if (checkedItem.IsChecked == false) return true;
+            //        if (checkedItem.IsChecked == false) return true;
 
-                    var itemChanged = (checkedItem.CheckedAt < p.BlackMarketOrder.SellPriceMinDate || checkedItem.CheckedAt < p.CaerleonOrder.SellPriceMinDate);
+            //        var itemChanged = (checkedItem.CheckedAt < p.BlackMarketOrder.SellPriceMinDate || checkedItem.CheckedAt < p.CaerleonOrder.SellPriceMinDate);
 
-                    if (itemChanged)
-                    {
-                        checkedItem.IsChecked = false;
+            //        if (itemChanged)
+            //        {
+            //            checkedItem.IsChecked = false;
 
-                        return true;
-                    }
+            //            return true;
+            //        }
 
-                    return false;
-                })
-                .Where(p => p.Profit > _albionMarketScanerOptions.MinProfit)
-                .Select(pair =>
-                {
-                    var item = _albionItemsService.GetItemInfo(pair.ItemId);
-
-                    return new MarketRecommendation
-                    {
-                        ItemName = item.LocalizedNames.EN_US,
-                        PotentialProfit = pair.Profit,
-                        EnchantLevel = item.EnchantLevel,
-                        ItemQuality = MapItemQuality(pair.Quality),
-                        Tier = item.Tier,
-                        SellDateBlackMarket = pair.BlackMarketOrder.SellPriceMinDate,
-                        SellDateCaerlion = pair.CaerleonOrder.SellPriceMinDate,
-                        PriceBlackMarket = pair.BlackMarketOrder.SellPriceMin,
-                        PriceCaerleon = pair.CaerleonOrder.SellPriceMin,
-                        ItemId = pair.ItemId
-                    };
-                })
-                .OrderByDescending(p => p.PotentialProfit)
-                .ToArray();
+            //        return false;
+            //    })
+            //    .Where(p => p.Profit > _albionMarketScanerOptions.MinProfit)
+            //    .Select(MapMarketPairToRecommendation)
+            //    .OrderByDescending(p => p.PotentialProfit)
+            //    .ToArray();
         }
 
         private MarketRecommendation MapMarketPairToRecommendation(MarketPair marketPair)
