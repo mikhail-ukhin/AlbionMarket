@@ -73,21 +73,11 @@ namespace AlbionMarket.Api
 
                 var items = new List<MarketPair>();
 
-                //await WarriorItemMarketPair(items);
-                //await HunterItemMarketPair(items);
+                await WarriorItemMarketPair(items);
+                await HunterItemMarketPair(items);
 
-                //_marketPairInfoService.HandleNewData(items);
+                _marketPairInfoService.HandleNewData(items);
 
-                var pair = new MarketPairState
-                {
-                    ItemId = "Test1",
-                    LastProfit = 500,
-                    Quality = 1,
-                    Status = Core.Enums.MarketPairStatus.PriceIsRising,
-                    StatusUpdatedAt = DateTime.UtcNow
-                };
-
-                await _marketPairStateService.CreateAsync(pair);
 
                 _workerStateService.LastScanFinished = DateTime.UtcNow;
                 _workerStateService.ScanInProgress = false;

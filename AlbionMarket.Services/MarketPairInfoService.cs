@@ -1,52 +1,53 @@
 ﻿using AlbionMarket.Core.Configuration;
 using AlbionMarket.Core.Models;
 using Microsoft.Extensions.Options;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace AlbionMarket.Services
 {
     public class MarketPairInfoService
-	{
-		// temp solution to store data in service
-		private List<MarketPair> marketPairsDb = new();
-		private readonly AlbionItemsService _albionItemsService;
-        private readonly CheckedItemsService _checkedItemsService;
+    {
+        // temp solution to store data in service
+        private List<MarketPair> marketPairsDb = new();
 
-		private readonly AlbionMarketScanerOptions _albionMarketScanerOptions;
+        private readonly AlbionItemsService _albionItemsService;
+        private readonly CheckedItemsService _checkedItemsService;
+        private readonly MarketPairStateService _marketPairStateService;
+
+        private readonly AlbionMarketScanerOptions _albionMarketScanerOptions;
 
         public MarketPairInfoService(
-			AlbionItemsService albionItemsService, 
-			CheckedItemsService checkedItemsService,
-			IOptions<AlbionMarketScanerOptions> albionMarketScanerOptions)
-		{
-			_albionItemsService = albionItemsService;
-            _checkedItemsService = checkedItemsService;
+            AlbionItemsService albionItemsService,
+            CheckedItemsService checkedItemsService,
+            MarketPairStateService marketPairStateService,
 
-			_albionMarketScanerOptions = albionMarketScanerOptions.Value;
+            IOptions<AlbionMarketScanerOptions> albionMarketScanerOptions
+        )
+        {
+            _albionItemsService = albionItemsService;
+            _checkedItemsService = checkedItemsService;
+            _marketPairStateService = marketPairStateService;
+
+            _albionMarketScanerOptions = albionMarketScanerOptions.Value;
         }
 
-		public void HandleNewData(IEnumerable<MarketPair> marketPairs)
-		{
-			// TDB Come up with cleverer algorithm to update items
+        public void HandleNewData(IEnumerable<MarketPair> marketPairs)
+        {
+            // TDB Come up with cleverer algorithm to update items (or not?)
 
-			var newDb = new List<MarketPair>();
+            var newDb = new List<MarketPair>();
 
-			foreach (var item in marketPairs)
-			{
+            foreach (var item in marketPairs)
+            {
                 item.Profit = item.BlackMarketOrder.SellPriceMin - item.CaerleonOrder.SellPriceMin;
 
-				newDb.Add(item);
+                newDb.Add(item);
             }
 
-			marketPairsDb = newDb;
-		}
+            marketPairsDb = newDb;
+        }
 
-		public List<MarketPair> ConvertOrdersToMarketPairs(IEnumerable<CityOrder> orders)
-		{
+        public List<MarketPair> ConvertOrdersToMarketPairs(IEnumerable<CityOrder> orders)
+        {
             var marketPairs = new List<MarketPair>();
             var orderGroups = orders.GroupBy(v => $"{v.ItemId},{v.Quality}");
 
@@ -76,74 +77,121 @@ namespace AlbionMarket.Services
                 }
             }
 
-			return marketPairs;
+            return marketPairs;
         }
 
-		public MarketRecommendation[] GetGoodPairs()
-		{
-			if (marketPairsDb.Count == 0)
-			{
-				return Array.Empty<MarketRecommendation>();
-			}
+        public async Task<List<MarketRecommendation>> GetGoodPairs()
+        {
+            if (marketPairsDb.Count == 0)
+            {
+                return new List<MarketRecommendation>();
+            }
 
-			var itemsToFilter = _checkedItemsService.GetItems();
+            var marketPairStateItems = await _marketPairStateService.GetAllAsync();
+            var result = new List<MarketRecommendation>();
 
-			return marketPairsDb
-				.Where(p => p.CaerleonOrder.SellPriceMin < p.BlackMarketOrder.SellPriceMin)
-				//.Where(p => p.BlackMarketOrder.SellPriceMinDate >= DateTime.UtcNow.AddHours(-6))
-				//.Where(p => p.BlackMarketOrder.SellPriceMinDate >= p.CaerleonOrder.SellPriceMinDate)
-				.Where(p =>
-				{
-					var checkedItem = itemsToFilter.FirstOrDefault(v => v.ItemId == p.ItemId);
+            foreach (var marketPair in marketPairsDb)
+            {
+                var existedMarketPairState = marketPairStateItems.FirstOrDefault(p => p.ItemId == marketPair.ItemId && p.Quality == marketPair.Quality);
 
-					if (checkedItem == null) return true;
+                if (existedMarketPairState != null)
+                {
+                    // checked
 
-					if (checkedItem.IsChecked == false) return true;
+                    // checked item, but updated profit and dates
+                    if (marketPair.Profit > existedMarketPairState.LastProfit && (existedMarketPairState.StatusUpdatedAt < marketPair.BlackMarketOrder.SellPriceMinDate || existedMarketPairState.StatusUpdatedAt < marketPair.CaerleonOrder.SellPriceMinDate))
+                    {
+                        var recommendation = MapMarketPairToRecommendation(marketPair);
 
-					var itemChanged = (checkedItem.CheckedAt < p.BlackMarketOrder.SellPriceMinDate || checkedItem.CheckedAt < p.CaerleonOrder.SellPriceMinDate);
+                        existedMarketPairState.StatusUpdatedAt = DateTime.UtcNow;
 
-					if (itemChanged)
-					{
-						checkedItem.IsChecked = false;
 
-						return true;	
-					}
+                        result.Add(recommendation);
+                    }
+                }
+                else
+                {
 
-					return false;
-				})
-				.Where(p => p.Profit > _albionMarketScanerOptions.MinProfit)
-				.Select(pair =>
-				{
-					var item = _albionItemsService.GetItemInfo(pair.ItemId);
+                }
+            }
 
-					return new MarketRecommendation
-					{
-						ItemName = item.LocalizedNames.EN_US,
-						PotentialProfit = pair.Profit,
-						EnchantLevel = item.EnchantLevel,
-						ItemQuality = MapItemQuality(pair.Quality),
-						Tier = item.Tier,
-						SellDateBlackMarket = pair.BlackMarketOrder.SellPriceMinDate,
-						SellDateCaerlion = pair.CaerleonOrder.SellPriceMinDate,
-						PriceBlackMarket = pair.BlackMarketOrder.SellPriceMin,
-						PriceCaerleon = pair.CaerleonOrder.SellPriceMin,
-						ItemId = pair.ItemId
-					};
-				})
-				.OrderByDescending(p => p.PotentialProfit)
-				.ToArray();
-		}
+            return result;
 
-		private string MapItemQuality(int quality) {
-			return quality switch
-			{
-				1 => "Normal",
-				2 => "Good",
-				3 => "Outstanding",
-				4 => "Excellent",
-				5 => "Masterpiece",
-				_ => throw new ArgumentOutOfRangeException(nameof(quality))
-			};
-		}	
-	}
+            return marketPairsDb
+                .Where(p => p.CaerleonOrder.SellPriceMin < p.BlackMarketOrder.SellPriceMin)
+                //.Where(p => p.BlackMarketOrder.SellPriceMinDate >= DateTime.UtcNow.AddHours(-6))
+                //.Where(p => p.BlackMarketOrder.SellPriceMinDate >= p.CaerleonOrder.SellPriceMinDate)
+                .Where(p =>
+                {
+                    var checkedItem = itemsToFilter.FirstOrDefault(v => v.ItemId == p.ItemId);
+
+                    if (checkedItem == null) return true;
+
+                    if (checkedItem.IsChecked == false) return true;
+
+                    var itemChanged = (checkedItem.CheckedAt < p.BlackMarketOrder.SellPriceMinDate || checkedItem.CheckedAt < p.CaerleonOrder.SellPriceMinDate);
+
+                    if (itemChanged)
+                    {
+                        checkedItem.IsChecked = false;
+
+                        return true;
+                    }
+
+                    return false;
+                })
+                .Where(p => p.Profit > _albionMarketScanerOptions.MinProfit)
+                .Select(pair =>
+                {
+                    var item = _albionItemsService.GetItemInfo(pair.ItemId);
+
+                    return new MarketRecommendation
+                    {
+                        ItemName = item.LocalizedNames.EN_US,
+                        PotentialProfit = pair.Profit,
+                        EnchantLevel = item.EnchantLevel,
+                        ItemQuality = MapItemQuality(pair.Quality),
+                        Tier = item.Tier,
+                        SellDateBlackMarket = pair.BlackMarketOrder.SellPriceMinDate,
+                        SellDateCaerlion = pair.CaerleonOrder.SellPriceMinDate,
+                        PriceBlackMarket = pair.BlackMarketOrder.SellPriceMin,
+                        PriceCaerleon = pair.CaerleonOrder.SellPriceMin,
+                        ItemId = pair.ItemId
+                    };
+                })
+                .OrderByDescending(p => p.PotentialProfit)
+                .ToArray();
+        }
+
+        private MarketRecommendation MapMarketPairToRecommendation(MarketPair marketPair)
+        {
+            var item = _albionItemsService.GetItemInfo(marketPair.ItemId);
+
+            return new MarketRecommendation
+            {
+                ItemName = item.LocalizedNames.EN_US,
+                PotentialProfit = marketPair.Profit,
+                EnchantLevel = item.EnchantLevel,
+                ItemQuality = MapItemQuality(marketPair.Quality),
+                Tier = item.Tier,
+                SellDateBlackMarket = marketPair.BlackMarketOrder.SellPriceMinDate,
+                SellDateCaerlion = marketPair.CaerleonOrder.SellPriceMinDate,
+                PriceBlackMarket = marketPair.BlackMarketOrder.SellPriceMin,
+                PriceCaerleon = marketPair.CaerleonOrder.SellPriceMin,
+                ItemId = marketPair.ItemId
+            };
+        }
+
+        private string MapItemQuality(int quality) =>
+            quality switch
+            {
+                1 => "Normal",
+                2 => "Good",
+                3 => "Outstanding",
+                4 => "Excellent",
+                5 => "Masterpiece",
+                _ => throw new ArgumentOutOfRangeException(nameof(quality))
+            };
+
+    }
 }

@@ -20,9 +20,9 @@ namespace AlbionMarket.Services
             _marketPairStateCollection = mongoDatabase.GetCollection<MarketPairState>(_albionDatabaseSettings.CollectionName);
         }
 
-        public async Task<List<MarketPairState>> GetAsync() => await _marketPairStateCollection.Find(_ => true).ToListAsync();
+        public async Task<List<MarketPairState>> GetAllAsync() => await _marketPairStateCollection.Find(_ => true).ToListAsync();
 
-        public async Task<MarketPairState?> GetAsync(string id) => await _marketPairStateCollection.Find(x => x.Id == id).FirstOrDefaultAsync();
+        public Task<MarketPairState> GetAsync(string id) => _marketPairStateCollection.Find(x => x.Id == id).FirstOrDefaultAsync();
 
         public async Task CreateAsync(MarketPairState newMarketPairState) => await _marketPairStateCollection.InsertOneAsync(newMarketPairState);
 
