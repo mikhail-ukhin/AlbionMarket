@@ -1,11 +1,12 @@
 ﻿@page "/recommendations"
+@using AlbionMarket.Core.Models;
 @implements IDisposable
 
 <PageTitle>Reccomendations</PageTitle>
 
-@    using AlbionMarket.Core;
-@    using AlbionMarket.Services
-@    using System.Timers
+@using AlbionMarket.Core;
+@using AlbionMarket.Services
+@using System.Timers
 
 @inject MarketPairInfoService MarketPairInfoService;
 @inject WorkerStateService WorkerStateService;

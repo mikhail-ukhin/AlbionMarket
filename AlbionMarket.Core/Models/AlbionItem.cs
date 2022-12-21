@@ -1,18 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace AlbionMarket.Core.Models
+﻿namespace AlbionMarket.Core.Models
 {
     public class AlbionItem
     {
-
-        public AlbionItem()
-        {
-            //ParseName();
-        }
 
         public string LocalizationNameVariable { get; set; }
 

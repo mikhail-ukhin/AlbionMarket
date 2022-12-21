@@ -1,4 +1,4 @@
-using AlbionMarket.Core;
+using AlbionMarket.Core.Configuration;
 using AlbionMarket.Core.Models;
 using AlbionMarket.Services;
 using Microsoft.Extensions.Options;
@@ -12,6 +12,7 @@ namespace AlbionMarket.Api
         private readonly AlbionItemsService _albionItemsService;
         private readonly MarketPairInfoService _marketPairInfoService;
         private readonly WorkerStateService _workerStateService;
+        private readonly MarketPairStateService _marketPairStateService;
 
         private readonly List<string> _armorTypes;
         private readonly List<string> _itemsList;
@@ -27,6 +28,7 @@ namespace AlbionMarket.Api
             AlbionItemsService albionItemsService,
             MarketPairInfoService marketPairInfoService,
             WorkerStateService workerStateService,
+            MarketPairStateService marketPairStateService,
             IOptions<AlbionMarketScanerOptions> albionMarketScanerOptions)
         {
             _albionMarketScanerOptions = albionMarketScanerOptions.Value;
@@ -35,6 +37,7 @@ namespace AlbionMarket.Api
             _albionItemsService = albionItemsService;
             _marketPairInfoService = marketPairInfoService;
             _workerStateService = workerStateService;
+            _marketPairStateService = marketPairStateService;
 
             _armorTypes = new List<string>
             {
@@ -70,10 +73,21 @@ namespace AlbionMarket.Api
 
                 var items = new List<MarketPair>();
 
-                await WarriorItemMarketPair(items);
-                await HunterItemMarketPair(items);
+                //await WarriorItemMarketPair(items);
+                //await HunterItemMarketPair(items);
 
-                _marketPairInfoService.HandleNewData(items);
+                //_marketPairInfoService.HandleNewData(items);
+
+                var pair = new MarketPairState
+                {
+                    ItemId = "Test1",
+                    LastProfit = 500,
+                    Quality = 1,
+                    Status = Core.Enums.MarketPairStatus.PriceIsRising,
+                    StatusUpdatedAt = DateTime.UtcNow
+                };
+
+                await _marketPairStateService.CreateAsync(pair);
 
                 _workerStateService.LastScanFinished = DateTime.UtcNow;
                 _workerStateService.ScanInProgress = false;
