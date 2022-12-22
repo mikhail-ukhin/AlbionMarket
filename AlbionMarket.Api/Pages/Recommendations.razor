@@ -1,4 +1,5 @@
 ﻿@page "/recommendations"
+@using AlbionMarket.Core.Enums;
 @using AlbionMarket.Core.Models;
 @implements IDisposable
 
@@ -31,7 +32,8 @@ else
     <table class="table">
         <thead>
             <tr>
-                <td>Check</td>
+                <td>Mark as Not Actual</td>
+                <td>Mark as Hot</td>
                 <th>Name</th>
                 <th>Tier</th>
                 <th>Enchant</th>
@@ -41,24 +43,27 @@ else
                 <th>Profit</th>
                 <th>Date (BlackMarket)</th>
                 <th>Date (Kaerlion)</th>
-                
+                <th>Status</th>
+
             </tr>
         </thead>
         <tbody>
             @foreach (var recommendation in recomendations)
             {
-                <tr>
-                    <td><button @onclick="() => CheckItem(recommendation)">Check</button></td>
+                <tr style="background-color:@GetRowColor(recommendation)">
+                    <td><button style="background-color:red"  @onclick="() => MarkItemAsNotActual(recommendation)">Mark as Not Actual</button></td>
+                    <td><button style="background-color:forestgreen"  @onclick="() => MarkItemAsHot(recommendation)">Mark as Hot</button></td>
                     <td>@recommendation.ItemName</td>
                     <td>@recommendation.Tier</td>
                     <td>@recommendation.EnchantLevel</td>
-                    <td>@recommendation.ItemQuality</td>
+                    <td>@MapItemQuality(recommendation.ItemQuality)</td>
                     <td>@recommendation.PriceBlackMarket</td>
                     <td>@recommendation.PriceCaerleon</td>
                     <td>@recommendation.PotentialProfit</td>
                     <td>@recommendation.SellDateBlackMarket</td>
                     <td>@recommendation.SellDateCaerlion</td>
-                    
+                    <td>@MapRecomendationStatus(recommendation.Status)</td>
+
                 </tr>
             }
         </tbody>
@@ -75,18 +80,33 @@ else
 
     private bool ScanInProgress;
 
-    private void CheckItem(MarketRecommendation recommendation)
+    private void MarkItemAsNotActual(MarketRecommendation recommendation)
     {
-        //CheckedItemsService.CheckItem(recommendation.ItemId);
-        //recomendations.Remove(recommendation);
+        recommendation.Status = MarketPairStatus.NotActual;
+        MarketPairStateService.UpdateMarketPairStatus(recommendation.ItemId, recommendation.ItemQuality, MarketPairStatus.NotActual);
     }
 
-    protected override async Task OnInitializedAsync()
+    private void MarkItemAsHot(MarketRecommendation recommendation)
     {
-        recomendations = await MarketPairInfoService.GetProfitableMarketPairs();
-        CurrentTime = DateTime.UtcNow;
+        recommendation.Status = MarketPairStatus.PriceIsRising;
+        MarketPairStateService.UpdateMarketPairStatus(recommendation.ItemId, recommendation.ItemQuality, MarketPairStatus.PriceIsRising);
+    }
 
-        await base.OnInitializedAsync();
+    private string GetRowColor(MarketRecommendation recommendation)
+    {
+        return recommendation.Status switch
+        {
+            MarketPairStatus.None => "white",
+            MarketPairStatus.NotActual => "yellow",
+            MarketPairStatus.PriceIsRising => "#72b772",
+            _ => throw new ArgumentOutOfRangeException(nameof(recommendation.Status))
+        };
+    }
+
+    protected override void OnInitialized()
+    {
+        recomendations = MarketPairInfoService.GetRecomendations();
+        CurrentTime = DateTime.UtcNow;
     }
 
     protected override void OnAfterRender(bool firstRender)
@@ -94,7 +114,7 @@ else
         if (firstRender)
         {
             timer = new Timer();
-            timer.Interval = 5000;
+            timer.Interval = 30000;
             timer.Elapsed += OnTimerInterval;
             timer.AutoReset = true;
 
@@ -103,7 +123,26 @@ else
         base.OnAfterRender(firstRender);
     }
 
-    private async void OnTimerInterval(object sender, ElapsedEventArgs e)
+    private string MapRecomendationStatus(MarketPairStatus status) => status switch
+    {
+        MarketPairStatus.None => "None",
+        MarketPairStatus.PriceIsRising => "Hot",
+        MarketPairStatus.NotActual => "Not Actual",
+        _ => throw new ArgumentOutOfRangeException(nameof(status))
+    };
+
+    private string MapItemQuality(int quality) =>
+                quality switch
+                {
+                    1 => "Normal",
+                    2 => "Good",
+                    3 => "Outstanding",
+                    4 => "Excellent",
+                    5 => "Masterpiece",
+                    _ => throw new ArgumentOutOfRangeException(nameof(quality))
+                };
+
+    private void OnTimerInterval(object sender, ElapsedEventArgs e)
     {
         Console.WriteLine("Updating values...");
 
@@ -114,9 +153,9 @@ else
         ScanInProgress = WorkerStateService.ScanInProgress;
         CurrentTime = DateTime.UtcNow;
 
-        recomendations = await MarketPairInfoService.GetProfitableMarketPairs();
+        recomendations = MarketPairInfoService.GetRecomendations();
 
-        await InvokeAsync(() => StateHasChanged());
+        InvokeAsync(() => StateHasChanged());
     }
 
     public void Dispose()

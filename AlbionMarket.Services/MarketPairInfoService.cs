@@ -8,6 +8,7 @@ namespace AlbionMarket.Services
     {
         // temp solution to store data in service
         private List<MarketPair> marketPairsDb = new();
+        private List<MarketRecommendation> marketRecommendationsDb = new();
 
         private readonly AlbionItemsService _albionItemsService;
         private readonly MarketPairStateService _marketPairStateService;
@@ -77,25 +78,25 @@ namespace AlbionMarket.Services
             return marketPairs;
         }
 
-        public async Task<List<MarketRecommendation>> GetProfitableMarketPairs()
+        public async Task PrepareRecomendations()
         {
             if (marketPairsDb.Count == 0)
             {
-                return new List<MarketRecommendation>();
+                return;
             }
 
             var marketPairStateItems = await _marketPairStateService.GetAllAsync();
 
             var filteredMarketPairs = marketPairsDb
                 .Where(p => p.Profit > _albionMarketScanerOptions.MinProfit)
-                .Where(p => p.CaerleonOrder.SellPriceMin > p.BlackMarketOrder.SellPriceMin);
+                .Where(p => p.CaerleonOrder.SellPriceMin < p.BlackMarketOrder.SellPriceMin)
+                .ToList();
 
             var result = new List<MarketRecommendation>();
 
             foreach (var marketPair in filteredMarketPairs)
             {
-                var existedMarketPairState = marketPairStateItems.FirstOrDefault(p => p.ItemId == marketPair.ItemId && p.Quality == marketPair.Quality);
-                var recommendation = MapMarketPairToRecommendation(marketPair);
+                var existedMarketPairState = await _marketPairStateService.GetAsync(marketPair.ItemId, marketPair.Quality);
 
                 if (existedMarketPairState != null)
                 {
@@ -107,9 +108,9 @@ namespace AlbionMarket.Services
                         existedMarketPairState.Status = Core.Enums.MarketPairStatus.None;
 
                         await _marketPairStateService.UpdateAsync(existedMarketPairState.Id, existedMarketPairState);
-
-                        result.Add(recommendation);
                     }
+
+                    result.Add(MapMarketPairToRecommendation(marketPair, existedMarketPairState));
                 }
                 else
                 {
@@ -124,16 +125,16 @@ namespace AlbionMarket.Services
 
                     await _marketPairStateService.CreateAsync(newMarketPairState);
 
-                    result.Add(recommendation);
+                    result.Add(MapMarketPairToRecommendation(marketPair, newMarketPairState));
                 }
             }
 
-            result = result.OrderByDescending(r => r.PotentialProfit).ToList();
-
-            return result;
+            marketRecommendationsDb = result.OrderByDescending(r => r.PotentialProfit).ToList();
         }
 
-        private MarketRecommendation MapMarketPairToRecommendation(MarketPair marketPair)
+        public List<MarketRecommendation> GetRecomendations() => marketRecommendationsDb.Where(r => r.Status != Core.Enums.MarketPairStatus.NotActual).ToList();
+
+        private MarketRecommendation MapMarketPairToRecommendation(MarketPair marketPair, MarketPairState state)
         {
             var item = _albionItemsService.GetItemInfo(marketPair.ItemId);
 
@@ -142,26 +143,15 @@ namespace AlbionMarket.Services
                 ItemName = item.LocalizedNames.EN_US,
                 PotentialProfit = marketPair.Profit,
                 EnchantLevel = item.EnchantLevel,
-                ItemQuality = MapItemQuality(marketPair.Quality),
+                ItemQuality = marketPair.Quality,
                 Tier = item.Tier,
                 SellDateBlackMarket = marketPair.BlackMarketOrder.SellPriceMinDate,
                 SellDateCaerlion = marketPair.CaerleonOrder.SellPriceMinDate,
                 PriceBlackMarket = marketPair.BlackMarketOrder.SellPriceMin,
                 PriceCaerleon = marketPair.CaerleonOrder.SellPriceMin,
-                ItemId = marketPair.ItemId
+                ItemId = marketPair.ItemId,
+                Status = state != null ? state.Status : Core.Enums.MarketPairStatus.None
             };
         }
-
-        private string MapItemQuality(int quality) =>
-            quality switch
-            {
-                1 => "Normal",
-                2 => "Good",
-                3 => "Outstanding",
-                4 => "Excellent",
-                5 => "Masterpiece",
-                _ => throw new ArgumentOutOfRangeException(nameof(quality))
-            };
-
     }
 }

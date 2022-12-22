@@ -78,10 +78,13 @@ namespace AlbionMarket.Api
 
                 _marketPairInfoService.HandleNewData(items);
 
+                await _marketPairInfoService.PrepareRecomendations();
 
                 _workerStateService.LastScanFinished = DateTime.UtcNow;
                 _workerStateService.ScanInProgress = false;
                 _workerStateService.ItemsFound = ItemsFound;
+
+                Console.WriteLine("Worker finished job, awaiting timeout...");
 
                 await Task.Delay(_albionMarketScanerOptions.MarketScanDelayMs, stoppingToken);
             }

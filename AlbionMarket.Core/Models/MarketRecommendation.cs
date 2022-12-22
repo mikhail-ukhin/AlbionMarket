@@ -1,4 +1,6 @@
-﻿namespace AlbionMarket.Core.Models
+﻿using AlbionMarket.Core.Enums;
+
+namespace AlbionMarket.Core.Models
 {
     public class MarketRecommendation
     {
@@ -13,12 +15,14 @@
 
         public int Tier { get; set; }
 
-        public string ItemQuality { get; set; }
+        public int ItemQuality { get; set; }
 
         public int EnchantLevel { get; set; }
 
         public DateTime? SellDateBlackMarket { get; set; }
 
         public DateTime? SellDateCaerlion { get; set; }
+
+        public MarketPairStatus Status { get; set; }
     }
 }
