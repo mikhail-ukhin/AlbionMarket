@@ -2,12 +2,13 @@ using AlbionMarket.Core.Configuration;
 using AlbionMarket.Core.Models;
 using AlbionMarket.Services;
 using Microsoft.Extensions.Options;
+using System.Threading;
 
 namespace AlbionMarket.Api
 {
-    public class Worker : BackgroundService
+    public class AlbionMarketWorker : BackgroundService
     {
-        private readonly ILogger<Worker> _logger;
+        private readonly ILogger<AlbionMarketWorker> _logger;
         private readonly CityOrderInfoService _cityOrderInfoService;
         private readonly AlbionItemsService _albionItemsService;
         private readonly MarketPairInfoService _marketPairInfoService;
@@ -18,12 +19,14 @@ namespace AlbionMarket.Api
         private readonly List<string> _itemsList;
         private readonly List<string> _cities;
 
+        private readonly Semaphore semaphore = new(2, 2);
+
         private readonly AlbionMarketScanerOptions _albionMarketScanerOptions;
 
         private int ItemsFound = 0;
 
-        public Worker(
-            ILogger<Worker> logger,
+        public AlbionMarketWorker(
+            ILogger<AlbionMarketWorker> logger,
             CityOrderInfoService cityOrderInfoService,
             AlbionItemsService albionItemsService,
             MarketPairInfoService marketPairInfoService,
@@ -66,6 +69,7 @@ namespace AlbionMarket.Api
         {
             while (!stoppingToken.IsCancellationRequested)
             {
+                _logger.LogInformation("Starting a market scan job");
                 _workerStateService.LastScanStart = DateTime.UtcNow;
                 _workerStateService.ScanInProgress = true;
 
@@ -84,22 +88,28 @@ namespace AlbionMarket.Api
                 _workerStateService.ScanInProgress = false;
                 _workerStateService.ItemsFound = ItemsFound;
 
-                Console.WriteLine("Worker finished job, awaiting timeout...");
+                _logger.LogInformation("Worker finished job, awaiting timeout...");
 
                 await Task.Delay(_albionMarketScanerOptions.MarketScanDelayMs, stoppingToken);
             }
         }
 
-        private async Task<List<MarketPair>> ProcessItems(List<AlbionItem> items)
+        private async Task<List<MarketPair>> ConvertAlbionItemsIntoMarketPairs(List<AlbionItem> items)
         {
+            semaphore.WaitOne();
+
+            Console.WriteLine($"starting handling albion items = {DateTime.Now.ToShortTimeString()}");
+
             var itemNames = items.Select(v => v.UniqueName);
-            var orders = await _cityOrderInfoService.GetCityOrderInfos(1, itemNames, _cities);
+            var orders = await _cityOrderInfoService.GetCityOrders(1, itemNames, _cities);
 
             if (orders == null) return new List<MarketPair>();
 
             var marketPairs = _marketPairInfoService.ConvertOrdersToMarketPairs(orders);
 
             ItemsFound += marketPairs.Count;
+
+            semaphore.Release();
 
             await Task.Delay(_albionMarketScanerOptions.ItemCategoriesDelayMs);
 
@@ -109,7 +119,7 @@ namespace AlbionMarket.Api
         private async Task HunterItemMarketPair(List<MarketPair> marketPairs)
         {
             var bowItems = _albionItemsService.GetAllBows();
-            var bowMarketPairs = await ProcessItems(bowItems);
+            var bowMarketPairs = await ConvertAlbionItemsIntoMarketPairs(bowItems);
 
             marketPairs.AddRange(bowMarketPairs);
         }
@@ -123,7 +133,7 @@ namespace AlbionMarket.Api
                 foreach (var item in _itemsList)
                 {
                     var armors = _albionItemsService.GetItems($"{item}_{armor}", 6, null);
-                    var armorMarketPairs = await ProcessItems(armors);
+                    var armorMarketPairs = await ConvertAlbionItemsIntoMarketPairs(armors);
 
                     marketPairs.AddRange(armorMarketPairs);
                 }
@@ -132,51 +142,70 @@ namespace AlbionMarket.Api
             // SWORDS
 
             var swordItems = _albionItemsService.GetAllSwords();
-            var swordMarketPairs = await ProcessItems(swordItems);
+            var swordMarketPairsTask = ConvertAlbionItemsIntoMarketPairs(swordItems);
 
-            marketPairs.AddRange(swordMarketPairs);
+            //marketPairs.AddRange(swordMarketPairs);
 
             // AXES
 
             var axeItems = _albionItemsService.GetAllAxes();
-            var axeMarketPairs = await ProcessItems(axeItems);
+            var axeMarketPairsTask = ConvertAlbionItemsIntoMarketPairs(axeItems);
 
-            marketPairs.AddRange(axeMarketPairs);
+            //marketPairs.AddRange(axeMarketPairs);
 
             // MACES
 
             var maceItems = _albionItemsService.GetAllMaces();
-            var maceMarketPairs = await ProcessItems(maceItems);
+            var maceMarketPairsTask = ConvertAlbionItemsIntoMarketPairs(maceItems);
 
-            marketPairs.AddRange(maceMarketPairs);
+            //marketPairs.AddRange(maceMarketPairs);
 
             // HAMMERS
 
             var hammerItems = _albionItemsService.GetAllHammers();
-            var hammerMarketPairs = await ProcessItems(hammerItems);
+            var hammerMarketPairsTask = ConvertAlbionItemsIntoMarketPairs(hammerItems);
 
-            marketPairs.AddRange(hammerMarketPairs);
+            //marketPairs.AddRange(hammerMarketPairs);
 
             // WAR GLOVES
 
             var glovesItems = _albionItemsService.GetAllWarGloves();
-            var glovesMarketPairs = await ProcessItems(glovesItems);
+            var glovesMarketPairsTask = ConvertAlbionItemsIntoMarketPairs(glovesItems);
 
-            marketPairs.AddRange(glovesMarketPairs);
+            //marketPairs.AddRange(glovesMarketPairs);
 
             // CROSSBOWS
 
             var crossbowItems = _albionItemsService.GetAllWarCrossbows();
-            var crossbowMarketPairs = await ProcessItems(crossbowItems);
+            var crossbowMarketPairsTask = ConvertAlbionItemsIntoMarketPairs(crossbowItems);
 
-            marketPairs.AddRange(crossbowMarketPairs);
+            //marketPairs.AddRange(crossbowMarketPairs);
 
             // SHIELDS
 
             var shieldItems = _albionItemsService.GetAllShields();
-            var shieldIMarketPairs = await ProcessItems(shieldItems);
+            var shieldIMarketPairsTask = ConvertAlbionItemsIntoMarketPairs(shieldItems);
 
-            marketPairs.AddRange(shieldIMarketPairs);
+            //marketPairs.AddRange(shieldIMarketPairs);
+
+            var getAllMarketPairTasks = new List<Task<List<MarketPair>>>()
+            {
+                shieldIMarketPairsTask,
+                crossbowMarketPairsTask,
+                glovesMarketPairsTask,
+                hammerMarketPairsTask,
+                maceMarketPairsTask,
+                axeMarketPairsTask,
+                swordMarketPairsTask
+            };
+
+            var customMarketPairLists = await Task.WhenAll(getAllMarketPairTasks);
+            var customMarketPairs = customMarketPairLists.SelectMany(l => l);
+
+            if (customMarketPairs != null)
+            {
+                marketPairs.AddRange(customMarketPairs);
+            }
         }
     }
 }

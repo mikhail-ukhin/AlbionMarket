@@ -23,7 +23,7 @@ builder.Services.Configure<AlbionMarketScanerOptions>(
 builder.Services.Configure<AlbionDatabaseSettings>(
     builder.Configuration.GetSection("AlbionDatabase"));
 
-builder.Services.AddHostedService<Worker>();
+builder.Services.AddHostedService<AlbionMarketWorker>();
 
 var app = builder.Build();
 
