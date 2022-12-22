@@ -1,6 +1,6 @@
 ﻿namespace AlbionMarket.Core.Configuration
 {
-    public class AlbionMarketScanerOptions
+    public class AlbionMarketScanerSettings
     {
         public int MinProfit { get; set; }
 

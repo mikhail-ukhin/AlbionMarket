@@ -13,13 +13,13 @@ namespace AlbionMarket.Services
         private readonly AlbionItemsService _albionItemsService;
         private readonly MarketPairStateService _marketPairStateService;
 
-        private readonly AlbionMarketScanerOptions _albionMarketScanerOptions;
+        private readonly AlbionMarketScanerSettings _albionMarketScanerOptions;
 
         public MarketPairInfoService(
             AlbionItemsService albionItemsService,
             MarketPairStateService marketPairStateService,
 
-            IOptions<AlbionMarketScanerOptions> albionMarketScanerOptions
+            IOptions<AlbionMarketScanerSettings> albionMarketScanerOptions
         )
         {
             _albionItemsService = albionItemsService;

@@ -8,15 +8,15 @@ namespace AlbionMarket.Services
     public class CityOrderInfoService
 	{
 		private readonly HttpClient _httpClient = new();
-        private readonly AlbionMarketScanerOptions _albionMarketScanerOptions;
+        private readonly AlbionMarketScanerSettings _albionMarketScanerOptions;
 
-        public CityOrderInfoService(IOptions<AlbionMarketScanerOptions> albionMarketScanerOptions)
+        public CityOrderInfoService(IOptions<AlbionMarketScanerSettings> albionMarketScanerOptions)
 		{
             _albionMarketScanerOptions = albionMarketScanerOptions.Value;
             _httpClient.BaseAddress = new Uri(_albionMarketScanerOptions.ApiUrl);
         }
 
-		public async Task<CityOrder[]?> GetCityOrderInfos(int quality, IEnumerable<string> itemNames, IEnumerable<string> cities)
+		public async Task<CityOrder[]?> GetCityOrders(int quality, IEnumerable<string> itemNames, IEnumerable<string> cities)
 		{
 			var requestUrl = $"stats/prices/{string.Join(',', itemNames)}?locations={string.Join(',', cities)}";
 			var result = await _httpClient.GetFromJsonAsync<CityOrder[]>(requestUrl);

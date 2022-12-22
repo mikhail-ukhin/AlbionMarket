@@ -10,9 +10,9 @@ namespace AlbionMarket.Services
     public class AlbionItemsService
     {
         private readonly Dictionary<string, AlbionItem> albionItemsDb = new Dictionary<string, AlbionItem>();
-        private readonly AlbionMarketScanerOptions _albionMarketScanerOptions;
+        private readonly AlbionMarketScanerSettings _albionMarketScanerOptions;
 
-        public AlbionItemsService(IOptions<AlbionMarketScanerOptions> albionMarketScannerOptions)
+        public AlbionItemsService(IOptions<AlbionMarketScanerSettings> albionMarketScannerOptions)
         {
             _albionMarketScanerOptions = albionMarketScannerOptions.Value;
 

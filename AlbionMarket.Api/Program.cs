@@ -17,13 +17,16 @@ builder
     .AddSingleton<AlbionItemsService>()
     .AddSingleton<MarketPairStateService>();
 
-builder.Services.Configure<AlbionMarketScanerOptions>(
+builder.Services.Configure<AlbionMarketScanerSettings>(
 	builder.Configuration.GetSection("AlbionMarketScanner"));
 
 builder.Services.Configure<AlbionDatabaseSettings>(
     builder.Configuration.GetSection("AlbionDatabase"));
 
-builder.Services.AddHostedService<Worker>();
+builder.Services.Configure<AlbionWorkerSettings>(
+    builder.Configuration.GetSection("AlbionWorker"));
+
+builder.Services.AddHostedService<AlbionMarketWorker>();
 
 var app = builder.Build();
 
