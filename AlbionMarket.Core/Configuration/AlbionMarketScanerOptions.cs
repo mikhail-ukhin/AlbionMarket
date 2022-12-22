@@ -13,5 +13,7 @@
         public int MarketScanDelayMs { get; set; }
 
         public int ItemCategoriesDelayMs { get; set; }
+
+        public int MarketCatalogPageUpdateInterval { get; set; }
     }
 }

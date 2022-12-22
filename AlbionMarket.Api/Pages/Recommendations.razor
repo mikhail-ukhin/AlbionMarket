@@ -1,4 +1,5 @@
 ﻿@page "/recommendations"
+@using AlbionMarket.Core.Configuration;
 @using AlbionMarket.Core.Enums;
 @using AlbionMarket.Core.Models;
 @implements IDisposable
@@ -8,10 +9,12 @@
 @using AlbionMarket.Core;
 @using AlbionMarket.Services
 @using System.Timers
+@using Microsoft.Extensions.Options;
 
 @inject MarketPairInfoService MarketPairInfoService;
 @inject WorkerStateService WorkerStateService;
 @inject MarketPairStateService MarketPairStateService;
+@inject IOptions<AlbionMarketScanerOptions> AlbionMarketScanerOptions;
 
 <h1>Albion Market Scanner</h1>
 
@@ -114,10 +117,9 @@ else
         if (firstRender)
         {
             timer = new Timer();
-            timer.Interval = 30000;
+            timer.Interval = AlbionMarketScanerOptions.Value.MarketCatalogPageUpdateInterval;
             timer.Elapsed += OnTimerInterval;
             timer.AutoReset = true;
-
             timer.Enabled = true;
         }
         base.OnAfterRender(firstRender);
