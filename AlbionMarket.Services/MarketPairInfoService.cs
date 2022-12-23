@@ -89,6 +89,7 @@ namespace AlbionMarket.Services
 
             var filteredMarketPairs = marketPairsDb
                 .Where(p => p.Profit > _albionMarketScanerOptions.MinProfit)
+                .Where(p => p.CaerleonOrder.SellPriceMin < _albionMarketScanerOptions.MaxPrice)
                 .Where(p => p.CaerleonOrder.SellPriceMin < p.BlackMarketOrder.SellPriceMin)
                 .ToList();
 

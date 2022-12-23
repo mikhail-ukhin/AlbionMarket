@@ -7,7 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AlbionMarket.Services", "Al
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AlbionMarket.Core", "AlbionMarket.Core\AlbionMarket.Core.csproj", "{F9599A2A-F3EB-40AA-A879-067BDFA08B34}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AlbionMarket.Api", "AlbionMarket.Api\AlbionMarket.Api.csproj", "{7517125F-84CD-4866-BDD3-03BE11BB4D48}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AlbionMarket.Api", "AlbionMarket.Api\AlbionMarket.Api.csproj", "{7517125F-84CD-4866-BDD3-03BE11BB4D48}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

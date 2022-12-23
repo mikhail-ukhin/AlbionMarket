@@ -114,8 +114,6 @@ namespace AlbionMarket.Api
 
             semaphore.Release();
 
-            //await Task.Delay(_albionMarketScanerOptions.ItemCategoriesDelayMs);
-
             return marketPairs;
         }
 

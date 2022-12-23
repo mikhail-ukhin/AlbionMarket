@@ -9,6 +9,7 @@
 @using AlbionMarket.Core;
 @using AlbionMarket.Services
 @using System.Timers
+@using Microsoft.AspNetCore.Components.QuickGrid
 @using Microsoft.Extensions.Options;
 
 @inject MarketPairInfoService MarketPairInfoService;
@@ -32,6 +33,12 @@
 }
 else
 {
+    <QuickGrid Items="@recomendationsQ">
+        <PropertyColumn Property="@(p => p.ItemName)" Sortable="true" />
+        <PropertyColumn Property="@(p => p.Tier)" Sortable="true" />
+        <PropertyColumn Property="@(p => MapItemQuality(p.ItemQuality))" Sortable="true" />
+    </QuickGrid>
+
     <table class="table">
         <thead>
             <tr>
@@ -75,6 +82,7 @@ else
 
 @code {
     private List<MarketRecommendation>? recomendations;
+    private IQueryable<MarketRecommendation> recomendationsQ;
     private int ItemsFound;
     private DateTime? LastScanTimeStarted;
     private DateTime? LastScanTimeFinished;
@@ -109,6 +117,8 @@ else
     protected override void OnInitialized()
     {
         recomendations = MarketPairInfoService.GetRecomendations();
+        recomendationsQ = recomendations.AsQueryable();
+
         CurrentTime = DateTime.UtcNow;
     }
 

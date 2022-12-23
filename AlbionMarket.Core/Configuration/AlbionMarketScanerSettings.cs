@@ -15,5 +15,7 @@
         public int ItemCategoriesDelayMs { get; set; }
 
         public int MarketCatalogPageUpdateInterval { get; set; }
+
+        public int MaxPrice { get; set; }
     }
 }
