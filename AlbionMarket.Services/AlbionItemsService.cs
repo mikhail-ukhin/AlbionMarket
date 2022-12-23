@@ -81,20 +81,6 @@ namespace AlbionMarket.Services
             return allItems;
         }
 
-        public List<AlbionItem> GetAllItemsByCategories()
-        {
-            var getSwordsTask = GetAllSwords();
-            var getAxesTask = GetAllAxes();
-            var getMacesTask = GetAllMaces();
-
-            var tasks = new List<Task<List<AlbionItem>?>>()
-            {
-                getAxesTask,
-                getSwordsTask,
-                getMacesTask
-            };
-        }
-
         public List<AlbionItem> GetAllSwords()
         {
             var swordTypeNames = new List<string>
